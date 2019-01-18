@@ -19,7 +19,8 @@ import java.util.concurrent.Callable;
  * Note: you could cheat and read the input of the other player before playing... But if both do that you'll end up in a deadlock...
  *
  * Different than {@link GameSimpleFights}, the server sends the number for each unit just after the name. If there is not a draw, a unit is deleted.
- * Game ends when someone has only one type of unit, the winner is the one with the most remaining units.
+ * Game ends when someone has only one type of unit, or if the last 20 battles are 20 draws.
+ * The winner is the one with the most remaining units.
  * 
  * @author Cedric Mayer, 2019
  * @version $Id
@@ -29,18 +30,27 @@ public class GameLimitedAmountOfUnits implements Callable<Boolean> {
     private static final int DEFAULT_PORT = 8080;
     /** Do not modify this! Separator between fields: a line feed, usable with {@link BufferedReader#readLine()} */
     private static final String SEPARATOR = "\n";
+    /** The maximum of draws */
+    private static final int MAX_DRAWS = 20;
+    
+    
+    
     
     /** The different ships, you can change the names :-) */
     private static final String[] SHIPS = new String[] {"TIEFIGHTER", "BOMBER", "DESTROYER"};
-    /** The different ships, you can change the units for your battles */
+    /** The different ships or hitpoints, you can change the number for your battles */
     private static final int[] STARTING_SHIPS = new int[] {100, 100, 100};
     // {"Infantry", "Cavalry", "Canons"}
-    // {"Stone", "Cisors", "Paper"}
+    // {"Stone", "Scissors", "Paper"}
     /** The results of a battle (0 draw, 1 success, 2 failure) */
     private static final String[] RESULT = new String[] {"Draw", "Success!", "Failure :-("};
     /** Your name: change it */
-    private final String MY_NAME = "DarthV" + new Random().nextInt() + "dor";
+    private final String MY_NAME = System.getProperty("user.name");
 
+    
+    
+    
+    
     /** input to read what the other player sent */
     private final BufferedReader input;
     /** output to send something to the other player */
@@ -53,6 +63,9 @@ public class GameLimitedAmountOfUnits implements Callable<Boolean> {
     /** number of other ships */
     private final int[] otherShips = Arrays.copyOf(STARTING_SHIPS, 3);
     
+    /** Counter of consecutive draws */
+    private int nbDraws = 0;
+    
     /** Constructor : an instance for one socket
      *
      * @param socket    the socket
@@ -63,8 +76,7 @@ public class GameLimitedAmountOfUnits implements Callable<Boolean> {
         output = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         
         // send your name
-        output.write(MY_NAME);
-        output.write(SEPARATOR);
+        // FIXME send your name (with separator)
         // flush so that the other player can receive your input
         output.flush();
 
@@ -73,23 +85,25 @@ public class GameLimitedAmountOfUnits implements Callable<Boolean> {
         Thread.currentThread().setName((server ? "Server" : "Client") + "-Thread-Game-Against-" + against);
 
         // send the units
-        for (int unit = 0; unit < 3; unit++) {
-            if (server) {
-                // send information
-                output.write("" + otherShips[unit]);
-                output.write(SEPARATOR);
-                output.flush();
-            } else {
-                // receive information
+        if (server) {
+            // send information
+            // FIXME: see what the client awaits, what should you send?
+        } else {
+            // receive information
+            for (int unit = 0; unit < 3; unit++) {
                 int nb = Integer.parseInt(input.readLine());
                 otherShips[unit] = myShips[unit] = nb;
             }
         }
     }
 
-    /** Compute the next unit */
+    /** Compute the next unit
+     * 
+     * @return  The unit type (0, 1, or 2)
+     */
     private int computeNextUnit() {
         // here you can compute the next unit to send
+        // FIXME: please do not use Math.random nor Random
         int ship = -1;
         while (ship < 0 || myShips[ship] == 0) {
             ship = (int) (Math.random() * SHIPS.length);
@@ -98,8 +112,8 @@ public class GameLimitedAmountOfUnits implements Callable<Boolean> {
     }
     
     private void lastUnitPlayed(int unit) {
-        // you can store the last unit played, so that you have the whole history
-        
+        // you can store the last unit played by the other player, so that you have the whole history
+        // FIXME if needed
     }
     
     private int oneLoop(int round) throws IOException {
@@ -108,13 +122,9 @@ public class GameLimitedAmountOfUnits implements Callable<Boolean> {
         String unitName = SHIPS[unit];
         
         // send it
-        output.write("" + unit);
-        output.write(SEPARATOR);
-        output.write(unitName);
-        output.write(SEPARATOR);
-        output.flush();
+        // FIXME Unit index then name, and something important
         
-        // read the one from the player
+        // read the one from the other player
         String otherUnitIndexString = input.readLine();
         int otherUnitIndex = Integer.parseInt(otherUnitIndexString);
         String otherUnitName = input.readLine();
@@ -122,7 +132,7 @@ public class GameLimitedAmountOfUnits implements Callable<Boolean> {
         lastUnitPlayed(otherUnitIndex);
         
         // little checks
-        assert otherShips[otherUnitIndex] > 1; // error of other player's program
+        assert otherShips[otherUnitIndex] > 1; // error of other player's program (probably you if you test locally)
         assert myShips[unit] > 1; // error of current developer!
         
         // compute result
@@ -134,21 +144,26 @@ public class GameLimitedAmountOfUnits implements Callable<Boolean> {
                 round, against, unitName, otherUnitName, RESULT[battleResult]));
         
         // perform battle
-        if (battleResult == 1) {
-            otherShips[otherUnitIndex] --;
-        }
-        if (battleResult == 2) {
-            myShips[unit] --;
+        switch (battleResult) {
+            case 0: nbDraws ++; break;
+            case 1: otherShips[otherUnitIndex] --; nbDraws=0; break;
+            case 2: myShips[unit] --; nbDraws=0; break; 
         }
         
         // return the success
         return battleResult;
     }
     
+    /** Enum for end status */
     private static enum EndStatus {
         NOT_FINISHED, SUCCESS, FAILURE;
     }
     
+    /**
+     * Checks the end status of the battle
+     *
+     * @return  The end status
+     */
     private EndStatus checkEndStatus() {
         int nb0_1 = 0;
         int nb0_2 = 0;
@@ -162,8 +177,9 @@ public class GameLimitedAmountOfUnits implements Callable<Boolean> {
             totalships2 += otherShips[unit];
         }
         // compute end status
+        boolean endOfGame = nbDraws >= MAX_DRAWS || nb0_1 == 2 || nb0_2 == 2;
         EndStatus toreturn;
-        if (nb0_1 == 2 || nb0_2 == 2) {
+        if (endOfGame) {
             if (totalships1 > totalships2) {
                 toreturn = EndStatus.SUCCESS;
             } else {
@@ -218,8 +234,9 @@ public class GameLimitedAmountOfUnits implements Callable<Boolean> {
                 against, endStatus, displayShips(myShips), displayShips(otherShips)));
         
         boolean battleSuccess = nbResults[1] > nbResults[2];
-        input.close();
-        output.close();
+        
+        // FIXME close input/output
+        
         return battleSuccess;
     }
     
@@ -247,20 +264,10 @@ public class GameLimitedAmountOfUnits implements Callable<Boolean> {
             }
         } else if (args[0].equals("server")) {
             // run as a server
-            try (ServerSocket serverSocket = new ServerSocket(DEFAULT_PORT);) {
-                while (true) {
-                    System.out.println("Server ready");
-                    Socket connection = serverSocket.accept();
-                    new GameLimitedAmountOfUnits(connection, true).call();
-                    connection.close();
-                }
-            }
-        } else if (args.length > 0) {
-            // run as a client
-            System.out.println("Client connection to " + args[0]);
-            Socket connection = new Socket(args[0], DEFAULT_PORT);
-            new GameLimitedAmountOfUnits(connection, false).call();
-            connection.close();
+            // FIXME
+        } else {
+            // run as a client towards sever specified in args[0]
+            // FIXME
         }
     }
 }

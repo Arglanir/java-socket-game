@@ -7,7 +7,6 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Random;
 import java.util.concurrent.Callable;
 
 /**
@@ -28,15 +27,27 @@ public class GameSimpleFights implements Callable<Boolean> {
     /** Do not modify this! Separator between fields: a line feed, usable with {@link BufferedReader#readLine()} */
     private static final String SEPARATOR = "\n";
     
+    
+    
+    
+    
+    
+    
     /** The different ships, you can change the names :-) */
     private static final String[] SHIPS = new String[] {"TIEFIGHTER", "BOMBER", "DESTROYER"};
     // {"Infantry", "Cavalry", "Canons"}
-    // {"Stone", "Cisors", "Paper"}
+    // {"Stone", "Scissors", "Paper"}
     /** The results of a battle (0 draw, 1 success, 2 failure) */
     private static final String[] RESULT = new String[] {"Draw", "Success!", "Failure :-("};
     /** Your name: change it */
-    private final String MY_NAME = "DarthV" + new Random().nextInt() + "dor";
+    private final String MY_NAME = System.getProperty("user.name");
 
+    
+    
+    
+    
+    
+    
     /** input to read what the other player sent */
     private final BufferedReader input;
     /** output to send something to the other player */
@@ -50,12 +61,12 @@ public class GameSimpleFights implements Callable<Boolean> {
      * @throws IOException  If an error happens
      */
     public GameSimpleFights(Socket socket) throws IOException {
+        // opening the input and output
         input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         output = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         
         // send your name
-        output.write(MY_NAME);
-        output.write(SEPARATOR);
+        // FIXME send your name (with separator)
         // flush so that the other player can receive your input
         output.flush();
         
@@ -63,15 +74,21 @@ public class GameSimpleFights implements Callable<Boolean> {
         against = input.readLine();
         Thread.currentThread().setName("Thread-GameSimpleFights-Against-" + against);
     }
-
+    
+    /**
+     * Compute the next unit to send
+     *
+     * @return  The next unit to send
+     */
     private int computeNextUnit() {
         // here you can compute the next unit to send
+        // FIXME please do not use Math.random nor Random
         return (int) (Math.random() * SHIPS.length);
     }
     
     private void lastUnitPlayed(int unit) {
-        // you can store the last unit played, so that you have the whole history
-        
+        // you can store the last unit played by the other player, so that you have the whole history
+        // FIXME if needed
     }
     
     /**
@@ -86,12 +103,8 @@ public class GameSimpleFights implements Callable<Boolean> {
         int unit = computeNextUnit();
         String unitName = SHIPS[unit];
         
-        // send it
-        output.write("" + unit);
-        output.write(SEPARATOR);
-        output.write(unitName);
-        output.write(SEPARATOR);
-        output.flush();
+        // send it, unit then name 
+        // FIXME (and do something important...)
         
         // read the one from the player
         String otherUnitIndexString = input.readLine();
@@ -114,26 +127,28 @@ public class GameSimpleFights implements Callable<Boolean> {
     
     @Override
     public Boolean call() throws IOException {
+        // list of battle results for the 3 possible outcomes: draw, success, failure
         int[] nbResults = new int[3];
+        
         // main loop
-        for (int round = 1; round <= NUMBER_OF_FIGHTS; round ++) {
-            nbResults[oneLoop(round)] += 1;
-        }
+        // FIXME run 100 battles
+        // FIXME store the result in nbResults
+        
         // display battle results
         for (int index = 0; index < 3; index ++) {
             System.out.println(String.format("Battle against %s: %s/%s %s", against, nbResults[index], NUMBER_OF_FIGHTS, RESULT[index]));
         }
+        
         // compute if success more than failures
         boolean battleSuccess = nbResults[1] > nbResults[2];
-        input.close();
-        output.close();
+        // FIXME close sockets
         return battleSuccess;
     }
     
     /**
      * Main method
      *
-     * @param args
+     * @param args The arguments. If empty, runs the game locally
      * @throws IOException
      */
     public static void main(String[] args) throws IOException {
@@ -162,20 +177,10 @@ public class GameSimpleFights implements Callable<Boolean> {
             }
         } else if (args[0].equals("server")) {
             // a server
-            try (ServerSocket serverSocket = new ServerSocket(DEFAULT_PORT);) {
-                while (true) {
-                    System.out.println("Server ready");
-                    Socket connection = serverSocket.accept();
-                    new GameSimpleFights(connection).call();
-                    connection.close();
-                }
-            }
-        } else if (args.length > 0) {
+         // FIXME
+        } else {
             // a client
-            System.out.println("Client connection to " + args[0]);
-            Socket connection = new Socket(args[0], DEFAULT_PORT);
-            new GameSimpleFights(connection).call();
-            connection.close();
+            // FIXME
         }
     }
 }
