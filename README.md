@@ -1,6 +1,8 @@
 # java-socket-game
 Some little games in order to play with Java TCP sockets.
 
+Don't cheat please!
+
 ## Note
 This has been created as an exercise for Java students.
 
