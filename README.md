@@ -1,5 +1,5 @@
 # java-socket-game
-Somme little games in order to play with Java TCP sockets.
+Some little games in order to play with Java TCP sockets.
 
 ## Note
 This has been created as an exercise for Java students.
