@@ -247,7 +247,7 @@ public class GameSimpleFights implements Callable<Boolean> {
     
     @Override
     public Boolean call() throws IOException {
-        // list of battle results for the 3 possible outcomes: draw, success, failure
+        // list of battle results for the 3 possible outcomes: 0:draws, 1:successes, failures
         int[] nbResults = new int[3];
         
         // main loop
