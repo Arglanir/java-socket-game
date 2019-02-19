@@ -66,7 +66,7 @@ public class GameSimpleFights implements Callable<Boolean> {
         output = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         
         // send your name
-        // FIXME send your name (with separator)
+        // FIXME send your name (with separator) with output.write(...)
         // flush so that the other player can receive your input
         output.flush();
         
@@ -118,7 +118,7 @@ public class GameSimpleFights implements Callable<Boolean> {
         //boolean success = battleResult == 1;
         
         // display something
-        System.out.println(String.format("  Round %s against %s: %s vs %s: %s %s %s", 
+        System.out.println(String.format("  Round %s against %s: %s vs %s: %s", 
                 round, against, unitName, otherUnitName, RESULT[battleResult]));
         
         // return the success
@@ -127,7 +127,7 @@ public class GameSimpleFights implements Callable<Boolean> {
     
     @Override
     public Boolean call() throws IOException {
-        // list of battle results for the 3 possible outcomes: draw, success, failure
+        // list of battle results for the 3 possible outcomes: 0:draws, 1:successes, failures
         int[] nbResults = new int[3];
         
         // main loop
@@ -177,10 +177,10 @@ public class GameSimpleFights implements Callable<Boolean> {
             }
         } else if (args[0].equals("server")) {
             // a server
-         // FIXME
+            // FIXME : create a server like above, with an infinite loop so that you can receive other players
         } else {
             // a client
-            // FIXME
+            // FIXME : create a client like above, that connects to the computer named args[0]
         }
     }
 }
