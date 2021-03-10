@@ -13,7 +13,8 @@ import java.util.concurrent.Callable;
 
 /**
  * This is a little game played over a symmetric socket.
- * First give the name, separator, then a unit index, separator, unit name, separator, and do that 100 times.
+ * First give your name, separator, then server sends the number of units of each type,
+ * then a unit index, separator, unit name, separator, and do that until the end.
  * The combat is a success if you played 0 and the other played a 1, or 1 and 2, or 2 and 0.
  * 
  * Note: you could cheat and read the input of the other player before playing... But if both do that you'll end up in a deadlock...
@@ -38,7 +39,7 @@ public class GameLimitedAmountOfUnits implements Callable<Boolean> {
     
     /** The different ships, you can change the names :-) */
     private static final String[] SHIPS = new String[] {"TIEFIGHTER", "BOMBER", "DESTROYER"};
-    /** The different ships or hitpoints, you can change the number for your battles */
+    /** The different ships or hitpoints, you can change the number for your battles (the server is the one who chooses) */
     private static final int[] STARTING_SHIPS = new int[] {100, 100, 100};
     // {"Infantry", "Cavalry", "Canons"}
     // {"Stone", "Scissors", "Paper"}
