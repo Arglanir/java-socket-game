@@ -54,6 +54,8 @@ public class GameSimpleFights implements Callable<Boolean> {
     private final BufferedWriter output;
     /** name of the other player */
     private final String against;
+    /** a counter */
+    private int turn = 0;
     
     /** Constructor : an instance for one socket
      *
@@ -83,7 +85,7 @@ public class GameSimpleFights implements Callable<Boolean> {
     private int computeNextUnit() {
         // here you can compute the next unit to send
         // FIXME please do not use Math.random nor Random
-        return (int) (Math.random() * SHIPS.length);
+        return turn % SHIPS.length;
     }
     
     private void lastUnitPlayed(int unit) {
@@ -120,6 +122,9 @@ public class GameSimpleFights implements Callable<Boolean> {
         // display something
         System.out.println(String.format("  Round %s against %s: %s vs %s: %s", 
                 round, against, unitName, otherUnitName, RESULT[battleResult]));
+        
+        // increase turn number
+        turn++;
         
         // return the success
         return battleResult;
