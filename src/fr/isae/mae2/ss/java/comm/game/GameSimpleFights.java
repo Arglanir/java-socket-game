@@ -126,13 +126,14 @@ public class GameSimpleFights implements Callable<Boolean> {
         // increase turn number
         turn++;
         
-        // return the success
+        // return the success 0:draw, 1:success, 2:failure
         return battleResult;
     }
     
     @Override
     public Boolean call() throws IOException {
-        // list of battle results for the 3 possible outcomes: 0:draws, 1:successes, failures
+        // list of battle results for the 3 possible outcomes: 0:draws, 1:successes, 2:failures
+        // it's only for statistics, displayed below
         int[] nbResults = new int[3];
         
         // main loop
