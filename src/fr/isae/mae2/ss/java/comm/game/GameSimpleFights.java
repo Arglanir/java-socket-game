@@ -7,10 +7,10 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,16 +28,18 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @version $Id
  */
 public class GameSimpleFights implements Callable<Boolean> {
-
-	private static class CheaterPlayer extends GameSimpleFights {
+	/**
+	 * Teacher player
+	 */
+	private static class TeacherPlayer extends GameSimpleFights {
 
 		private String otherUnitName;
 		private boolean cheating;
-		private long currentTimeout = 200;
+		private long currentTimeout = 100;
+		private static long MAX_TIMEOUT = 1100;
 		private final String opponentAddress;
-		
 
-		public CheaterPlayer(Socket socket, boolean cheat) throws IOException {
+		public TeacherPlayer(Socket socket, boolean cheat) throws IOException {
 			super(socket);
 			this.cheating = cheat;
 			opponentAddress = socket.toString();
@@ -72,7 +74,7 @@ public class GameSimpleFights implements Callable<Boolean> {
 			}
 
 			// what unit to send next ?
-			String unitName = SHIPS[unit];
+			String unitName = currentTimeout == MAX_TIMEOUT ? "Are you cheating?" :SHIPS[unit];
 
 			// send it, unit then name
 			output.write(unit + "");
@@ -103,7 +105,7 @@ public class GameSimpleFights implements Callable<Boolean> {
 			// send it, unit then name
 			output.write(unit + "");
 			output.write(SEPARATOR);
-			output.write(unitName);
+			output.write(currentTimeout == MAX_TIMEOUT ? "Are you cheating?" : unitName);
 			output.write(SEPARATOR);
 			output.flush();
 
@@ -122,7 +124,7 @@ public class GameSimpleFights implements Callable<Boolean> {
 
 		@Override
 		protected int oneLoop(int round) throws IOException {
-			int[] units = cheating && new Random().nextInt(3) > 0 ? cheat() : dontCheat();
+			int[] units = cheating && new Random().nextInt(2) > 0 ? cheat() : dontCheat();
 			int unit = units[0];
 			String unitName = SHIPS[unit];
 			int otherUnitIndex = units[1];
@@ -133,9 +135,10 @@ public class GameSimpleFights implements Callable<Boolean> {
 			// display something
 			System.out.println(String.format("  Round %s against %s: %s vs %s: %s", round, against, unitName,
 					otherUnitName, RESULT[battleResult]));
-			
-			if (currentTimeout > 1100) {
-				System.out.println("The other player " + against + " on " + opponentAddress + " is cheating! I stop here.");
+
+			if (currentTimeout > MAX_TIMEOUT) {
+				System.out.println(
+						"The other player " + against + " on " + opponentAddress + " is cheating! I stop here.");
 				return 4;
 			}
 
@@ -257,7 +260,8 @@ public class GameSimpleFights implements Callable<Boolean> {
 		// main loop
 		for (int battle = 1; battle <= NUMBER_OF_FIGHTS; battle++) {
 			int result = oneLoop(battle);
-			if (result > 2) return true;
+			if (result > 2)
+				return true;
 			nbResults[result] += 1;
 		}
 
@@ -287,13 +291,11 @@ public class GameSimpleFights implements Callable<Boolean> {
 				// server created
 				System.out.println("Local server ready");
 				new Thread(() -> {
-					Socket connection;
-					try {
-						// client created
-						System.out.println("Local client connection");
-						connection = new Socket("localhost", DEFAULT_PORT);
-						new CheaterPlayer(connection, true).call();
-						//new GameSimpleFights(connection).call();
+					// client created
+					System.out.println("Local client connection");
+					try (Socket connection = new Socket("localhost", DEFAULT_PORT);) {
+						new TeacherPlayer(connection, true).call();
+						// new GameSimpleFights(connection).call();
 						connection.close();
 					} catch (Exception e) {
 						throw new IllegalStateException(e);
@@ -302,7 +304,7 @@ public class GameSimpleFights implements Callable<Boolean> {
 				// start the game
 				Socket connection = serverSocket.accept();
 				System.out.println("Start of game");
-				new CheaterPlayer(connection, true).call();
+				new TeacherPlayer(connection, true).call();
 				connection.close();
 			}
 		} else if (args[0].equals("server")) {
@@ -314,9 +316,15 @@ public class GameSimpleFights implements Callable<Boolean> {
 					String who = null;
 					try (Socket connection = serverSocket.accept();) {
 						who = connection.toString();
-						System.out.println("Start of game against " + connection + " " + new Date());
-						new CheaterPlayer(connection, true).call();
-						connection.close();
+						System.out.println(
+								"Start of game against " + connection.getRemoteSocketAddress() + " " + new Date());
+						new Thread(() -> {
+							try (connection) {
+								new TeacherPlayer(connection, true).call();
+							} catch (IOException e) {
+								System.err.println("With " + connection + ": " + e.toString());
+							}
+						}, "Game-with-" + connection.getRemoteSocketAddress());
 					} catch (Exception e) {
 						System.out.println("Problem when fighting " + who + ":" + e);
 					}
@@ -326,33 +334,29 @@ public class GameSimpleFights implements Callable<Boolean> {
 			// a teacher
 
 			Map<String, AtomicInteger> students = new HashMap<>();
-			students.put("pcb61-12-00", new AtomicInteger());
-			students.put("pcb61-12-01", new AtomicInteger());
-			students.put("pcb61-12-02", new AtomicInteger());
-			students.put("pcb61-12-03", new AtomicInteger());
-			students.put("pcb61-12-04", new AtomicInteger());
-			students.put("pcb61-12-05", new AtomicInteger());
-			students.put("pcb61-12-06", new AtomicInteger());
-			students.put("pcb61-12-07", new AtomicInteger());
-			students.put("pcb61-12-08", new AtomicInteger());
-			students.put("pcb61-12-09", new AtomicInteger());
-			students.put("pcb61-12-10", new AtomicInteger());
-			students.put("pcb61-12-11", new AtomicInteger());
-			students.put("pcb61-12-12", new AtomicInteger());
+			for (String st : "01 02 03 04 05 06 07 08 09 10 11 12 13 14 15".split(" ")) {
+				students.put("pcb61-09-" + st, new AtomicInteger());
+			}
 
 			while (true) {
-				for (Entry<String, AtomicInteger> student : students.entrySet()) {
+				students.entrySet().stream().parallel().forEach(student -> {
+					System.out.println("Contacting " + student.getKey());
+					Socket connection;
 					try {
-						System.out.println("Calling " + student.getKey());
-						main(student.getKey());
+						// client created
+						connection = new Socket(student.getKey(), DEFAULT_PORT);
+						new TeacherPlayer(connection, true).call();
+						// new GameSimpleFights(connection).call();
+						connection.close();
 						student.getValue().incrementAndGet();
 					} catch (Exception e) {
-						e.printStackTrace();
+						if (!e.toString().contains("ConnectException")) {
+							System.err.println("Unable to connect to " + student.getKey() + ": " + e.toString());
+						}
 					}
-				}
-				for (Entry<String, AtomicInteger> student : students.entrySet()) {
-					System.out.println(student.getKey() + " : " + student.getValue());
-				}
+				});
+				students.entrySet().stream().sorted(Comparator.comparing(u -> u.getKey()))
+						.forEach(student -> System.out.println(student.getKey() + " : " + student.getValue()));
 				try {
 					Thread.sleep(60000);
 				} catch (InterruptedException e) {
@@ -364,8 +368,12 @@ public class GameSimpleFights implements Callable<Boolean> {
 		} else {
 			System.out.println("Connecting to " + args[0]);
 			Socket connection = new Socket(args[0], DEFAULT_PORT);
-			new CheaterPlayer(connection, true).call();
-			connection.close();
+			try {
+				new TeacherPlayer(connection, true).call();
+				connection.close();
+			} catch (Exception e) {
+				System.err.println("Unable to contact args[0]");
+			}
 		}
 	}
 }
