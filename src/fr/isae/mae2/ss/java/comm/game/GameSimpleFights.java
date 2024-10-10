@@ -5,6 +5,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Comparator;
@@ -294,8 +295,8 @@ public class GameSimpleFights implements Callable<Boolean> {
 					// client created
 					System.out.println("Local client connection");
 					try (Socket connection = new Socket("localhost", DEFAULT_PORT);) {
-						new TeacherPlayer(connection, true).call();
-						// new GameSimpleFights(connection).call();
+						//new TeacherPlayer(connection, true).call();
+						new GameSimpleFights(connection).call();
 						connection.close();
 					} catch (Exception e) {
 						throw new IllegalStateException(e);
@@ -307,26 +308,47 @@ public class GameSimpleFights implements Callable<Boolean> {
 				new TeacherPlayer(connection, true).call();
 				connection.close();
 			}
+		} else if ("auto".equals(args[0])) {
+			// local test
+			Thread tmain = new Thread(() -> {
+				try {
+					main("server");
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}, "Server");
+			tmain.setDaemon(true);
+			tmain.start();
+			main("localhost");
 		} else if (args[0].equals("server")) {
+			// server code
 			try (ServerSocket serverSocket = new ServerSocket(DEFAULT_PORT);) {
 				// server created
-				System.out.println("Local server ready");
+				System.out.println("Public server ready");
+				Map<String, AtomicInteger> students = new HashMap<>();
 				while (true) {
 					// start the game
 					String who = null;
-					try (Socket connection = serverSocket.accept();) {
-						who = connection.toString();
+					try {
+						Socket connection = serverSocket.accept();
+						// client connected!
+						who = connection.getRemoteSocketAddress().toString().split(":")[0].split("\\.")[3];
+						if (!students.containsKey(who)) {
+							students.put(who, new AtomicInteger());
+						}
+						students.get(who).incrementAndGet();
 						System.out.println(
-								"Start of game against " + connection.getRemoteSocketAddress() + " " + new Date());
+								"Start of game against " + who + " at " + connection.getRemoteSocketAddress() + " date " + new Date());
+						final String whoFinal = who;
 						new Thread(() -> {
-							try (connection) {
+							try {
 								new TeacherPlayer(connection, true).call();
 							} catch (IOException e) {
-								System.err.println("With " + connection + ": " + e.toString());
+								System.out.println("Problem when fighting " + whoFinal + ": " + e);
 							}
-						}, "Game-with-" + connection.getRemoteSocketAddress());
+						}, "Game-with-" + connection.getRemoteSocketAddress()).start();
 					} catch (Exception e) {
-						System.out.println("Problem when fighting " + who + ":" + e);
+						System.err.println("Problem when starting the fight against " + who + ": " + e);
 					}
 				}
 			}
@@ -344,7 +366,8 @@ public class GameSimpleFights implements Callable<Boolean> {
 					Socket connection;
 					try {
 						// client created
-						connection = new Socket(student.getKey(), DEFAULT_PORT);
+						connection = new Socket();
+						connection.connect(new InetSocketAddress(student.getKey(), DEFAULT_PORT), 1000);
 						new TeacherPlayer(connection, true).call();
 						// new GameSimpleFights(connection).call();
 						connection.close();
@@ -372,7 +395,8 @@ public class GameSimpleFights implements Callable<Boolean> {
 				new TeacherPlayer(connection, true).call();
 				connection.close();
 			} catch (Exception e) {
-				System.err.println("Unable to contact args[0]");
+				System.err.println("Unable to contact " + args[0]);
+				e.printStackTrace();
 			}
 		}
 	}
