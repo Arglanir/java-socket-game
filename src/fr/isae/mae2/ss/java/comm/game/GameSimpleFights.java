@@ -96,18 +96,18 @@ public class GameSimpleFights implements Callable<Boolean> {
 	}
 
 	/**
-	 * One loop
+	 * One battle
 	 *
-	 * @param round the current round
+	 * @param round 	the current round
 	 * @return the battle result
 	 * @throws IOException If there is a problem
 	 */
-	private int oneLoop(int round) throws IOException {
+	private int oneBattle(int round) throws IOException {
 		// what unit to send next ?
 		int unit = computeNextUnit();
 		String unitName = SHIPS[unit];
 
-		// send it, unit then name
+		// send it, unit, separator, then name, separator (it's the protocol!)
 		// FIXME (and do something important...)
 
 		// read the one from the player
@@ -152,7 +152,8 @@ public class GameSimpleFights implements Callable<Boolean> {
 
 		// compute if success more than failures
 		boolean battleSuccess = nbResults[1] > nbResults[2];
-		// FIXME close sockets
+		// FIXME close input and output
+		// for best practice: what you open, you close, even if connection is closed somewhere else
 		return battleSuccess;
 	}
 
